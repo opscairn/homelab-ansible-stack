@@ -10,16 +10,19 @@
   tasks:
 
     - name: PRE-FLIGHT | Require target_host
+      tags: [deploy]
       ansible.builtin.assert:
         that: target_host is defined and target_host != ''
         fail_msg: "target_host must be set"
 
     - name: PRE-FLIGHT | Check current disk usage
+      tags: [deploy]
       ansible.builtin.command: df -h /
       register: disk_before
       changed_when: false
 
     - name: PRE-FLIGHT | Report before state
+      tags: [deploy]
       ansible.builtin.debug:
         msg: "Disk before cleanup:\n{{ disk_before.stdout }}"
 
@@ -71,11 +74,13 @@
 
     # ---- Result ----
     - name: VALIDATE | Check disk usage after cleanup
+      tags: [deploy, validate]
       ansible.builtin.command: df -h /
       register: disk_after
       changed_when: false
 
     - name: VALIDATE | Report result
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg:
           - "Before: {{ disk_before.stdout_lines[-1] }}"

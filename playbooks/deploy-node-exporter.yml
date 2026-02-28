@@ -17,16 +17,19 @@
 
     # --- Preflight ---
     - name: PREFLIGHT | Skip docker-host (already has nodepulse on port 9100)
+      tags: [deploy]
       meta: end_host
       when: inventory_hostname == "docker-host"
 
     - name: PREFLIGHT | Check if node_exporter is already installed at correct version
+      tags: [deploy]
       command: "{{ node_exporter_bin }} --version"
       register: ne_version_check
       changed_when: false
       failed_when: false
 
     - name: PREFLIGHT | Set installed flag
+      tags: [deploy]
       set_fact:
         ne_already_installed: >-
           {{ ne_version_check.rc == 0 and
@@ -34,6 +37,7 @@
 
     # --- Install ---
     - name: INSTALL | Download node_exporter archive
+      tags: [deploy]
       get_url:
         url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
         dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
@@ -41,6 +45,7 @@
       when: not ne_already_installed
 
     - name: INSTALL | Extract node_exporter binary
+      tags: [deploy]
       unarchive:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
         dest: /tmp/
@@ -48,6 +53,7 @@
       when: not ne_already_installed
 
     - name: INSTALL | Copy binary to /usr/local/bin
+      tags: [deploy]
       copy:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter"
         dest: "{{ node_exporter_bin }}"
@@ -59,6 +65,7 @@
       notify: Restart node_exporter
 
     - name: INSTALL | Clean up downloaded files
+      tags: [deploy]
       file:
         path: "{{ item }}"
         state: absent
@@ -69,6 +76,7 @@
 
     # --- Systemd service ---
     - name: SERVICE | Create node_exporter systemd unit
+      tags: [deploy, configure]
       copy:
         dest: /etc/systemd/system/node_exporter.service
         mode: "0644"
@@ -98,20 +106,25 @@
       notify: Restart node_exporter
 
     - name: SERVICE | Enable and start node_exporter
+      tags: [deploy, configure]
       systemd:
         name: node_exporter
         enabled: true
         state: started
         daemon_reload: true
+      when: not ansible_check_mode
 
     # --- Validate ---
     - name: VALIDATE | Wait for node_exporter to be reachable
+      tags: [deploy, validate]
       wait_for:
         host: "{{ ansible_host }}"
         port: "{{ node_exporter_port }}"
         timeout: 15
+      when: not ansible_check_mode
 
     - name: VALIDATE | Check metrics endpoint responds
+      tags: [deploy, validate]
       uri:
         url: "http://{{ ansible_host }}:{{ node_exporter_port }}/metrics"
         return_content: false
@@ -120,8 +133,10 @@
       register: ne_probe
       retries: 3
       delay: 3
+      when: not ansible_check_mode
 
     - name: VALIDATE | Report status
+      tags: [deploy, validate]
       debug:
         msg: "node_exporter {{ node_exporter_version }} running on {{ inventory_hostname }} ({{ ansible_host }}:{{ node_exporter_port }}) — OK"
 

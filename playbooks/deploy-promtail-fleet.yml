@@ -18,12 +18,14 @@
 
     # -------------------------------------------------------------------------
     - name: PRE-FLIGHT | Check if Promtail already at correct version
+      tags: [deploy]
       ansible.builtin.command: promtail --version
       register: current_version
       changed_when: false
       failed_when: false
 
     - name: PRE-FLIGHT | Set needs_install fact
+      tags: [deploy]
       ansible.builtin.set_fact:
         needs_install: >-
           {{ current_version.rc != 0 or
@@ -31,6 +33,7 @@
 
     # -------------------------------------------------------------------------
     - name: INSTALL | Ensure unzip is installed (needed to extract .zip release)
+      tags: [deploy]
       ansible.builtin.apt:
         name: unzip
         state: present
@@ -38,6 +41,7 @@
       when: needs_install
 
     - name: INSTALL | Download Promtail binary
+      tags: [deploy]
       ansible.builtin.get_url:
         url: "https://github.com/grafana/loki/releases/download/v{{ promtail_version }}/promtail-linux-{{ promtail_arch }}.zip"
         dest: /tmp/promtail.zip
@@ -46,6 +50,7 @@
       when: needs_install
 
     - name: INSTALL | Extract Promtail binary
+      tags: [deploy]
       ansible.builtin.unarchive:
         src: /tmp/promtail.zip
         dest: /tmp/
@@ -53,6 +58,7 @@
       when: needs_install and not ansible_check_mode
 
     - name: INSTALL | Place Promtail binary
+      tags: [deploy]
       ansible.builtin.copy:
         src: "/tmp/promtail-linux-{{ promtail_arch }}"
         dest: "{{ promtail_binary }}"
@@ -64,6 +70,7 @@
       notify: Restart promtail
 
     - name: INSTALL | Clean up download artifacts
+      tags: [deploy]
       ansible.builtin.file:
         path: "{{ item }}"
         state: absent
@@ -74,6 +81,7 @@
 
     # -------------------------------------------------------------------------
     - name: CONFIG | Create config directory
+      tags: [deploy, configure]
       ansible.builtin.file:
         path: "{{ promtail_config_dir }}"
         state: directory
@@ -82,6 +90,7 @@
         mode: "0755"
 
     - name: "CONFIG | Set positions file path (stonecircle: /tmp noexec workaround)"
+      tags: [deploy, configure]
       ansible.builtin.set_fact:
         promtail_positions_file: >-
           {{ '/var/tmp/promtail-positions.yaml'
@@ -89,11 +98,13 @@
              else '/tmp/promtail-positions.yaml' }}
 
     - name: CONFIG | Detect Docker availability
+      tags: [deploy, configure]
       ansible.builtin.stat:
         path: /var/run/docker.sock
       register: docker_sock
 
     - name: CONFIG | Deploy Promtail config
+      tags: [deploy, configure]
       ansible.builtin.template:
         src: ../templates/promtail-config.yml.j2
         dest: "{{ promtail_config_dir }}/config.yml"
@@ -104,6 +115,7 @@
 
     # -------------------------------------------------------------------------
     - name: SYSTEMD | Deploy promtail service unit
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: /etc/systemd/system/promtail.service
         owner: root
@@ -131,6 +143,7 @@
       notify: Restart promtail
 
     - name: SYSTEMD | Reload daemon and enable promtail
+      tags: [deploy, configure]
       ansible.builtin.systemd:
         name: promtail
         enabled: true
@@ -139,6 +152,7 @@
 
     # -------------------------------------------------------------------------
     - name: VALIDATE | Ensure promtail is running
+      tags: [deploy, validate]
       ansible.builtin.systemd:
         name: promtail
         state: started
@@ -146,6 +160,7 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Wait for Promtail metrics endpoint
+      tags: [deploy, validate]
       ansible.builtin.uri:
         url: http://localhost:9080/metrics
         status_code: 200
@@ -158,6 +173,7 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Report status
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg: >-
           {{ inventory_hostname }}: promtail {{ 'OK' if (promtail_metrics.status | default(0)) == 200 else 'SLOW/ERROR — check journalctl -u promtail' }}

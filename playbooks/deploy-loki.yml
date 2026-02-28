@@ -17,6 +17,7 @@
   tasks:
 
     - name: PRE-FLIGHT | Confirm Synology NFS is mounted
+      tags: [deploy]
       ansible.builtin.stat:
         path: "{{ synology_docker_mount }}"
       register: synology_stat
@@ -24,6 +25,7 @@
 
     # -------------------------------------------------------------------------
     - name: LOKI | Create config directory
+      tags: [deploy, configure]
       ansible.builtin.file:
         path: "{{ loki_config_dir }}"
         state: directory
@@ -32,6 +34,7 @@
         mode: "0755"
 
     - name: LOKI | Create data directories (Synology NFS — chunks, rules)
+      tags: [deploy, configure]
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -44,6 +47,7 @@
         - "{{ loki_data_dir }}/rules"
 
     - name: LOKI | Create compactor directory (local disk — NFS causes .nfs* lock file errors)
+      tags: [deploy, configure]
       ansible.builtin.file:
         path: /var/lib/loki/compactor
         state: directory
@@ -53,6 +57,7 @@
       become: true
 
     - name: LOKI | Deploy loki.yml config
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: "{{ loki_config_dir }}/loki.yml"
         owner: "{{ ansible_user }}"
@@ -113,6 +118,7 @@
 
     # -------------------------------------------------------------------------
     - name: COMPOSE | Add loki service to docker-compose.yml
+      tags: [deploy, configure]
       ansible.builtin.blockinfile:
         path: "{{ compose_dir }}/docker-compose.yml"
         insertbefore: '^networks:'
@@ -146,6 +152,7 @@
 
     # -------------------------------------------------------------------------
     - name: GRAFANA | Ensure datasources provisioning directory exists
+      tags: [deploy, configure]
       ansible.builtin.file:
         path: "{{ grafana_datasources_dir }}"
         state: directory
@@ -153,6 +160,7 @@
       become: true
 
     - name: GRAFANA | Provision Loki datasource
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: "{{ grafana_datasources_dir }}/loki.yml"
         mode: "0644"
@@ -176,6 +184,7 @@
 
     # -------------------------------------------------------------------------
     - name: COMPOSE | Start loki container
+      tags: [deploy, configure]
       ansible.builtin.command:
         cmd: docker compose -f {{ compose_dir }}/docker-compose.yml up -d loki
         chdir: "{{ compose_dir }}"
@@ -184,6 +193,7 @@
       when: not ansible_check_mode
 
     - name: COMPOSE | Restart Grafana to pick up new datasource
+      tags: [deploy, configure]
       ansible.builtin.command:
         cmd: docker compose -f {{ compose_dir }}/docker-compose.yml restart grafana
         chdir: "{{ compose_dir }}"
@@ -192,6 +202,7 @@
 
     # -------------------------------------------------------------------------
     - name: VALIDATE | Wait for Loki to be ready
+      tags: [deploy, validate]
       ansible.builtin.uri:
         url: http://localhost:3100/ready
         status_code: 200
@@ -203,11 +214,13 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Confirm Loki is healthy
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg: "Loki is ready at {{ loki_url }} ✓"
 
     # -------------------------------------------------------------------------
     - name: COMMIT | Stage docker-compose changes
+      tags: [deploy]
       ansible.builtin.shell: |
         git -C {{ compose_dir }} add docker-compose.yml
         git -C {{ compose_dir }} diff --cached --quiet || \
@@ -216,8 +229,10 @@
       register: compose_commit
       changed_when: "'staged' in compose_commit.stdout"
       failed_when: false
+      when: not ansible_check_mode
 
     - name: SUMMARY | Loki deployment complete
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg:
           - "Loki v{{ loki_version }} running on docker-host:3100"

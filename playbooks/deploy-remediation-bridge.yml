@@ -17,17 +17,20 @@
 
     # -------------------------------------------------------------------------
     - name: PRE-FLIGHT | Confirm ansible-playbook is reachable
+      tags: [deploy]
       ansible.builtin.command: ansible-playbook --version
       changed_when: false
       register: ap_check
       failed_when: ap_check.rc != 0
 
     - name: PRE-FLIGHT | Confirm Python3 available
+      tags: [deploy]
       ansible.builtin.command: python3 --version
       changed_when: false
 
     # -------------------------------------------------------------------------
     - name: INSTALL | Ensure pip + venv available
+      tags: [deploy]
       ansible.builtin.package:
         name:
           - python3-pip
@@ -36,6 +39,7 @@
       become: true
 
     - name: INSTALL | Create bridge directory
+      tags: [deploy]
       ansible.builtin.file:
         path: "{{ bridge_dir }}"
         state: directory
@@ -45,11 +49,13 @@
       become: true
 
     - name: INSTALL | Create Python virtual environment
+      tags: [deploy]
       ansible.builtin.command:
         cmd: python3 -m venv {{ bridge_dir }}/venv
         creates: "{{ bridge_dir }}/venv/bin/activate"
 
     - name: INSTALL | Install Python dependencies
+      tags: [deploy]
       ansible.builtin.pip:
         name:
           - fastapi==0.115.6
@@ -61,6 +67,7 @@
 
     # -------------------------------------------------------------------------
     - name: BRIDGE | Deploy bridge.py
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: "{{ bridge_dir }}/bridge.py"
         owner: "{{ ansible_user }}"
@@ -244,6 +251,7 @@
 
     # -------------------------------------------------------------------------
     - name: BRIDGE | Deploy remediation-map.yml
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: "{{ bridge_dir }}/remediation-map.yml"
         owner: "{{ ansible_user }}"
@@ -282,6 +290,7 @@
 
     # -------------------------------------------------------------------------
     - name: SYSTEMD | Deploy remediation-bridge service unit
+      tags: [deploy, configure]
       ansible.builtin.copy:
         dest: /etc/systemd/system/remediation-bridge.service
         owner: root
@@ -320,6 +329,7 @@
       notify: Restart remediation-bridge
 
     - name: SYSTEMD | Reload daemon and enable service
+      tags: [deploy, configure]
       ansible.builtin.systemd:
         name: remediation-bridge
         enabled: true
@@ -330,6 +340,7 @@
 
     # -------------------------------------------------------------------------
     - name: VALIDATE | Wait for bridge health endpoint
+      tags: [deploy, validate]
       ansible.builtin.uri:
         url: http://localhost:{{ bridge_port }}/health
         status_code: 200
@@ -341,6 +352,7 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Show available mappings
+      tags: [deploy, validate]
       ansible.builtin.uri:
         url: http://localhost:{{ bridge_port }}/mappings
         status_code: 200
@@ -349,6 +361,7 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Report
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg:
           - "Remediation bridge running on ansible-host:{{ bridge_port }} ✓"

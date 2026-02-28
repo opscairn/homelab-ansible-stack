@@ -14,12 +14,14 @@
 
   tasks:
     - name: INSTALL | Install restic
+      tags: [deploy]
       apt:
         name: restic
         state: present
         update_cache: yes
 
     - name: INSTALL | Create restic config directory
+      tags: [deploy]
       file:
         path: "/home/{{ restic_user }}/.restic"
         state: directory
@@ -28,6 +30,7 @@
         mode: '0700'
 
     - name: INSTALL | Create restic password file (raw text only)
+      tags: [deploy]
       copy:
         content: "{{ vault_restic_password }}"
         dest: "/home/{{ restic_user }}/.restic/restic.env"
@@ -36,12 +39,14 @@
         mode: '0600'
 
     - name: CONFIG | Create exclude patterns directory
+      tags: [deploy, configure]
       file:
         path: /etc/restic
         state: directory
         mode: '0755'
 
     - name: CONFIG | Deploy exclude patterns
+      tags: [deploy, configure]
       copy:
         dest: /etc/restic/exclude.txt
         mode: '0644'
@@ -68,6 +73,7 @@
           /var/lib/kubelet/pods
 
     - name: CONFIG | Deploy backup script (with exit code 3 tolerance)
+      tags: [deploy, configure]
       copy:
         dest: /usr/local/bin/restic-backup.sh
         mode: '0755'
@@ -135,6 +141,7 @@
           log "=== Restic Backup Completed ==="
 
     - name: INSTALL | Initialize restic repository (if needed)
+      tags: [deploy]
       become_user: "{{ restic_user }}"
       shell: |
         restic -r {{ restic_repository }} \
@@ -146,8 +153,10 @@
       register: restic_init
       changed_when: "'created restic repository' in restic_init.stdout"
       failed_when: false
+      when: not ansible_check_mode
 
     - name: SYSTEMD | Create systemd service
+      tags: [deploy, configure]
       copy:
         dest: /etc/systemd/system/restic-backup.service
         mode: '0644'
@@ -165,12 +174,14 @@
           WantedBy=multi-user.target
 
     - name: SYSTEMD | Create systemd drop-in directory
+      tags: [deploy, configure]
       file:
         path: /etc/systemd/system/restic-backup.service.d
         state: directory
         mode: '0755'
 
     - name: SYSTEMD | Create user-alignment drop-in
+      tags: [deploy, configure]
       copy:
         dest: /etc/systemd/system/restic-backup.service.d/user-alignment.conf
         mode: '0644'
@@ -181,6 +192,7 @@
           Environment=RESTIC_PASSWORD_FILE=/home/{{ restic_user }}/.restic/restic.env
 
     - name: SYSTEMD | Create log-to-journal drop-in
+      tags: [deploy, configure]
       copy:
         dest: /etc/systemd/system/restic-backup.service.d/log-to-file.conf
         mode: '0644'
@@ -190,6 +202,7 @@
           StandardError=journal
 
     - name: SYSTEMD | Create backup timer
+      tags: [deploy, configure]
       copy:
         dest: /etc/systemd/system/restic-backup.timer
         mode: '0644'
@@ -206,6 +219,7 @@
           WantedBy=timers.target
 
     - name: SYSTEMD | Create log file with correct permissions
+      tags: [deploy, configure]
       file:
         path: /var/log/restic-backup.log
         state: touch
@@ -216,22 +230,27 @@
         access_time: preserve
 
     - name: SYSTEMD | Reload systemd
+      tags: [deploy, configure]
       systemd:
         daemon_reload: yes
 
     - name: SYSTEMD | Enable and start timer
+      tags: [deploy, configure]
       systemd:
         name: restic-backup.timer
         enabled: yes
         state: started
+      when: not ansible_check_mode
 
     - name: VALIDATE | Run initial backup test
+      tags: [deploy, validate]
       shell: /usr/local/bin/restic-backup.sh
       register: initial_backup
       failed_when: initial_backup.rc not in [0]
       when: not ansible_check_mode
 
     - name: VALIDATE | Report status
+      tags: [deploy, validate]
       debug:
         msg: "{{ inventory_hostname }}: Initial backup completed — check /var/log/restic-backup.log"
 
@@ -240,18 +259,23 @@
   become: yes
   tasks:
     - name: VALIDATE | Check service status
+      tags: [deploy, validate]
       shell: systemctl status restic-backup.service | head -10
       register: service_status
       failed_when: false
       changed_when: false
+      when: not ansible_check_mode
 
     - name: VALIDATE | Check timer status
+      tags: [deploy, validate]
       shell: systemctl status restic-backup.timer
       register: timer_status
-      failed_when: "'active (waiting)' not in timer_status.stdout"
+      failed_when: not ansible_check_mode and 'active (waiting)' not in timer_status.stdout
       changed_when: false
+      when: not ansible_check_mode
 
     - name: VALIDATE | Verify snapshots exist
+      tags: [deploy, validate]
       become_user: "{{ ansible_user }}"
       shell: |
         restic -r {{ restic_sftp_repo }} \
@@ -261,6 +285,7 @@
       when: not ansible_check_mode
 
     - name: VALIDATE | Display verification results
+      tags: [deploy, validate]
       debug:
         msg:
           - "Host: {{ inventory_hostname }}"

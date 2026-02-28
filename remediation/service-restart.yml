@@ -11,17 +11,20 @@
   tasks:
 
     - name: PRE-FLIGHT | Require target_host
+      tags: [deploy]
       ansible.builtin.assert:
         that: target_host is defined and target_host != ''
         fail_msg: "target_host must be set"
 
     - name: PRE-FLIGHT | Find all failed units (if service_name not set)
+      tags: [deploy]
       ansible.builtin.command: systemctl list-units --state=failed --no-legend --no-pager
       register: failed_units
       changed_when: false
       when: service_name == ''
 
     - name: PRE-FLIGHT | Report failed units
+      tags: [deploy]
       ansible.builtin.debug:
         msg: "Failed units on {{ target_host }}: {{ failed_units.stdout_lines | default(['none']) }}"
       when: service_name == ''
@@ -33,6 +36,7 @@
       when: service_name != ''
 
     - name: VALIDATE | Check specific service status
+      tags: [deploy, validate]
       ansible.builtin.command: systemctl is-active {{ service_name }}
       register: svc_status
       changed_when: false
@@ -40,6 +44,7 @@
       failed_when: false
 
     - name: VALIDATE | Report
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg: "{{ service_name }} on {{ target_host }}: {{ svc_status.stdout | default('unknown') }}"
       when: service_name != ''

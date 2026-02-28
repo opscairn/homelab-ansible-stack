@@ -27,6 +27,7 @@
       when: caddy_status.stdout != 'active'
 
     - name: VALIDATE | Confirm Caddy is active
+      tags: [deploy, validate]
       ansible.builtin.command: systemctl is-active caddy
       register: post_status
       changed_when: false
@@ -35,5 +36,6 @@
       until: post_status.stdout == 'active'
 
     - name: VALIDATE | Report
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg: "Caddy on go-host: {{ post_status.stdout }}"

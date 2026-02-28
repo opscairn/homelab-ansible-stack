@@ -12,16 +12,19 @@
   tasks:
 
     - name: PRE-FLIGHT | Require target_host
+      tags: [deploy]
       ansible.builtin.assert:
         that: target_host is defined and target_host != ''
         fail_msg: "target_host must be set"
 
     - name: PRE-FLIGHT | List all stopped/exited containers
+      tags: [deploy]
       ansible.builtin.command: docker ps -a --filter status=exited --filter status=dead --format "{{ '{{' }}.Names{{ '}}' }}"
       register: stopped_containers
       changed_when: false
 
     - name: PRE-FLIGHT | Report stopped containers
+      tags: [deploy]
       ansible.builtin.debug:
         msg: "Stopped containers on {{ target_host }}: {{ stopped_containers.stdout_lines | join(', ') if stopped_containers.stdout_lines else 'none' }}"
 
@@ -39,10 +42,12 @@
       changed_when: true
 
     - name: VALIDATE | Wait and check running containers
+      tags: [deploy, validate]
       ansible.builtin.command: docker ps --format "{{ '{{' }}.Names{{ '}}' }}"
       register: running_containers
       changed_when: false
 
     - name: VALIDATE | Confirm restart worked
+      tags: [deploy, validate]
       ansible.builtin.debug:
         msg: "Running containers after remediation: {{ running_containers.stdout_lines | join(', ') }}"
