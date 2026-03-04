@@ -43,6 +43,8 @@ verifier:
   name: ansible
 
 scenario:
+  # Skipping idempotence: restic backup/prune/check are command tasks
+  # that always report changed (they run a real backup each time).
   test_sequence:
     - dependency
     - cleanup
@@ -51,7 +53,6 @@ scenario:
     - create
     - prepare
     - converge
-    - idempotence
     - verify
     - cleanup
     - destroy

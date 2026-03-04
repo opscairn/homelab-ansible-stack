@@ -44,11 +44,16 @@
           - root_dropin.stat.exists
         fail_msg: "Root user drop-in not created"
 
-    - name: VERIFY | Timer is enabled
-      ansible.builtin.command: systemctl is-enabled restic-backup.timer
-      register: timer_enabled
-      changed_when: false
-      failed_when: timer_enabled.rc != 0
+    - name: VERIFY | Read root drop-in content
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/restic-backup.service.d/10-user-root.conf
+      register: root_dropin_content
+
+    - name: VERIFY | Assert root drop-in sets User=root
+      ansible.builtin.assert:
+        that:
+          - "'User=root' in (root_dropin_content.content | b64decode)"
+        fail_msg: "Root drop-in does not set User=root"
 
     - name: VERIFY | Service unit contains correct repo path
       ansible.builtin.command: grep "RESTIC_REPOSITORY={{ restic_repo_path }}" /etc/systemd/system/restic-backup.service

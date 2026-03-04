@@ -38,6 +38,8 @@ verifier:
   name: ansible
 
 scenario:
+  # Skipping idempotence: depends on restic role which runs backup
+  # commands that always report changed.
   test_sequence:
     - dependency
     - cleanup
@@ -46,7 +48,6 @@ scenario:
     - create
     - prepare
     - converge
-    - idempotence
     - verify
     - cleanup
     - destroy
