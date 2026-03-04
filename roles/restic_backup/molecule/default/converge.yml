@@ -1,0 +1,35 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  tasks:
+    - name: Install restic binary
+      ansible.builtin.apt:
+        name: restic
+        state: present
+        update_cache: true
+
+    - name: Create restic env file
+      ansible.builtin.copy:
+        dest: "{{ restic_env_file }}"
+        content: |
+          RESTIC_REPOSITORY={{ restic_repo_path }}
+          RESTIC_PASSWORD={{ restic_password }}
+        mode: "0600"
+
+    - name: Create restic password file
+      ansible.builtin.copy:
+        dest: "{{ restic_password_file }}"
+        content: "{{ restic_password }}"
+        mode: "0600"
+
+    - name: Initialize restic repository
+      ansible.builtin.command: >
+        restic init
+        --repo {{ restic_repo_path }}
+        --password-file {{ restic_password_file }}
+      args:
+        creates: "{{ restic_repo_path }}/config"
+
+  roles:
+    - role: restic_backup

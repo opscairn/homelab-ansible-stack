@@ -55,4 +55,36 @@ jobs:
       - name: ansible-lint
         run: |
           ansible-lint playbooks/ remediation/ roles/
-        continue-on-error: true   # lint findings are advisory; don't block merge
+        continue-on-error: false
+
+  molecule:
+    name: Molecule Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        role:
+          - common
+          - restic
+          - restic_backup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible + Molecule
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Molecule
+        run: |
+          cd roles/${{ matrix.role }}
+          molecule test
+        env:
+          ANSIBLE_FORCE_COLOR: "1"

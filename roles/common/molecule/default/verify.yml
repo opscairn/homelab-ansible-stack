@@ -1,0 +1,32 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+
+    - name: VERIFY | Sudoers drop-in exists
+      ansible.builtin.stat:
+        path: "/etc/sudoers.d/{{ ansible_user_id }}"
+      register: sudoers_file
+
+    - name: VERIFY | Assert sudoers file present with correct permissions
+      ansible.builtin.assert:
+        that:
+          - sudoers_file.stat.exists
+          - sudoers_file.stat.mode == '0440'
+        fail_msg: "Sudoers drop-in missing or has wrong permissions"
+
+    - name: VERIFY | Read sudoers file content
+      ansible.builtin.slurp:
+        src: "/etc/sudoers.d/{{ ansible_user_id }}"
+      register: sudoers_content
+
+    - name: VERIFY | Assert NOPASSWD rule is present
+      ansible.builtin.assert:
+        that:
+          - "'NOPASSWD' in (sudoers_content.content | b64decode)"
+        fail_msg: "NOPASSWD rule not found in sudoers drop-in"
+
+    - name: VERIFY | Report
+      ansible.builtin.debug:
+        msg: "common role verified: passwordless sudo configured for {{ ansible_user_id }}"

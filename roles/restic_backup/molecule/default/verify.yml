@@ -1,0 +1,61 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+
+    - name: VERIFY | Service unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/restic-backup.service
+      register: service_unit
+
+    - name: VERIFY | Timer unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/restic-backup.timer
+      register: timer_unit
+
+    - name: VERIFY | Assert units are deployed
+      ansible.builtin.assert:
+        that:
+          - service_unit.stat.exists
+          - timer_unit.stat.exists
+        fail_msg: "Service or timer unit not deployed"
+
+    - name: VERIFY | Drop-in directory exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/restic-backup.service.d
+      register: dropin_dir
+
+    - name: VERIFY | Assert drop-in directory present
+      ansible.builtin.assert:
+        that:
+          - dropin_dir.stat.exists
+          - dropin_dir.stat.isdir
+        fail_msg: "Drop-in directory not created"
+
+    - name: VERIFY | Root override drop-in exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/restic-backup.service.d/10-user-root.conf
+      register: root_dropin
+
+    - name: VERIFY | Assert root drop-in present
+      ansible.builtin.assert:
+        that:
+          - root_dropin.stat.exists
+        fail_msg: "Root user drop-in not created"
+
+    - name: VERIFY | Timer is enabled
+      ansible.builtin.command: systemctl is-enabled restic-backup.timer
+      register: timer_enabled
+      changed_when: false
+      failed_when: timer_enabled.rc != 0
+
+    - name: VERIFY | Service unit contains correct repo path
+      ansible.builtin.command: grep "RESTIC_REPOSITORY={{ restic_repo_path }}" /etc/systemd/system/restic-backup.service
+      register: repo_check
+      changed_when: false
+      failed_when: repo_check.rc != 0
+
+    - name: VERIFY | Report
+      ansible.builtin.debug:
+        msg: "restic_backup role verified: service, timer, and drop-ins deployed correctly"
