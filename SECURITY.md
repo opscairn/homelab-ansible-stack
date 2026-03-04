@@ -6,7 +6,7 @@ If you discover a security vulnerability in this project, please report it respo
 
 **Do NOT open a public GitHub issue.**
 
-Instead, email: **security@<YOUR_DOMAIN>**
+Instead, open a [GitHub Security Advisory](https://github.com/thewismit/homelab-ansible-stack/security/advisories/new) or email: **security@opscairn.com**
 
 Include:
 - A description of the vulnerability
