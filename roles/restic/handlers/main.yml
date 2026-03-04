@@ -1,26 +1,28 @@
 ---
 # roles/restic/handlers/main.yml
 
-- name: rebuild restic repo indexes
+- name: Rebuild restic repo indexes
   ansible.builtin.command: >
     restic
     --repo "{{ restic_repo_path }}"
     --password-file "{{ restic_password_file }}"
     rebuild-index
+  changed_when: true
   when: restic_backup is failed
 
-- name: remove stale restic lock
+- name: Remove stale restic lock
   ansible.builtin.command: >
     restic
     --repo "{{ restic_repo_path }}"
     --password-file "{{ restic_password_file }}"
     unlock
+  changed_when: true
 
-- name: set restic prune retried
+- name: Set restic prune retried
   ansible.builtin.set_fact:
     restic_prune_retried: true
 
-- name: retry restic prune after unlock
+- name: Retry restic prune after unlock
   ansible.builtin.command: >
     restic
     --repo "{{ restic_repo_path }}"
@@ -30,16 +32,18 @@
     --keep-last {{ restic_prune.keep_last }}
     --keep-weekly {{ restic_prune.keep_weekly }}
     --keep-monthly {{ restic_prune.keep_monthly }}
+  changed_when: true
   when: restic_prune is defined and not restic_prune_retried | default(false)
 
-- name: set restic check retried
+- name: Set restic check retried
   ansible.builtin.set_fact:
     restic_check_retried: true
 
-- name: retry restic check after unlock
+- name: Retry restic check after unlock
   ansible.builtin.command: >
     restic
     --repo "{{ restic_repo_path }}"
     --password-file "{{ restic_password_file }}"
     check
+  changed_when: true
   when: not restic_check_retried | default(false)

@@ -24,7 +24,7 @@ scrape_configs:
       max_age: 12h
       labels:
         job: systemd-journal
-        host: {{ ansible_hostname }}
+        host: {{ inventory_hostname }}
     relabel_configs:
       - source_labels: [__journal__systemd_unit]
         target_label: unit
@@ -39,7 +39,7 @@ scrape_configs:
       - targets: [localhost]
         labels:
           job: syslog
-          host: {{ ansible_hostname }}
+          host: {{ inventory_hostname }}
           __path__: /var/log/{syslog,auth.log,kern.log}
     pipeline_stages:
       - match:
@@ -57,7 +57,7 @@ scrape_configs:
       - targets: [localhost]
         labels:
           job: docker
-          host: {{ ansible_hostname }}
+          host: {{ inventory_hostname }}
           __path__: /var/lib/docker/containers/*/*-json.log
     pipeline_stages:
       - json:

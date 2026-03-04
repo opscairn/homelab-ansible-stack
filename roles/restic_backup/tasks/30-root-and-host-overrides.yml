@@ -1,30 +1,33 @@
 ---
 - name: Ensure systemd drop-in dir exists
-  file:
+  ansible.builtin.file:
     path: /etc/systemd/system/restic-backup.service.d
     state: directory
     mode: "0755"
 
 - name: Force service to run as root via drop-in
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/restic-backup.service.d/10-user-root.conf
     mode: "0644"
     content: |
       [Service]
       User=root
       Group=root
-  notify: [systemd daemon-reload]
+  notify: [Systemd daemon-reload]
 
 - name: Set RESTIC_HOST to inventory_hostname (drop-in)
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/restic-backup.service.d/20-restic-host-override.conf
     mode: "0644"
     content: |
       [Service]
       Environment=RESTIC_HOST=
       Environment=RESTIC_HOST={{ inventory_hostname }}
-  notify: [systemd daemon-reload]
+  notify: [Systemd daemon-reload]
 
 - name: Restart restic service once to pick up overrides (non-fatal)
-  shell: systemctl restart restic-backup.service || true
+  ansible.builtin.systemd:
+    name: restic-backup.service
+    state: restarted
+  failed_when: false
   changed_when: true

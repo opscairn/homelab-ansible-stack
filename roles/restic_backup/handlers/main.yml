@@ -1,9 +1,9 @@
 ---
-- name: systemd daemon-reload
-  systemd:
+- name: Systemd daemon-reload
+  ansible.builtin.systemd:
     daemon_reload: true
 
-- name: restart restic-backup
-  systemd:
+- name: Restart restic-backup
+  ansible.builtin.systemd:
     name: restic-backup.service
     state: restarted

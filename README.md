@@ -95,7 +95,7 @@ Prometheus ──alerts──▶ Alertmanager ──webhook──▶ Remediation
 
 ```bash
 # 1. Clone and configure
-git clone <this-repo> ansible-homelab && cd ansible-homelab
+git clone https://github.com/<YOUR_ORG>/homelab-ansible-stack ansible-homelab && cd ansible-homelab
 cp ansible.cfg.example ansible.cfg         # set your SSH key + ansible user paths
 cp inventory.yml.example inventory.yml     # fill in your host IPs
 cp group_vars/all/vault.yml.example group_vars/all/vault.yml
@@ -190,13 +190,15 @@ Secrets go in `group_vars/all/vault.yml` (see `vault.yml.example` for all requir
 pip install -r requirements.txt
 
 # Syntax-check all playbooks
-ansible-playbook playbooks/deploy-loki.yml --syntax-check -i inventory.yml.example
+for pb in playbooks/*.yml; do ansible-playbook "$pb" --syntax-check -i inventory.yml.example; done
 
-# Run molecule tests for the restic role (requires Docker)
+# Run Molecule tests for any role (requires Docker)
+cd roles/common && molecule test
 cd roles/restic && molecule test
+cd roles/restic_backup && molecule test
 ```
 
-CI runs syntax-check + ansible-lint on every push via GitHub Actions.
+CI runs syntax-check, ansible-lint, and Molecule tests (all 3 roles) on every push via GitHub Actions.
 
 ---
 

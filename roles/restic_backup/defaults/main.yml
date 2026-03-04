@@ -1,0 +1,7 @@
+---
+# Default schedule: 03:00 with up to 30 min jitter
+restic_oncalendar: "*-*-* 03:00:00"
+restic_jitter: "30m"
+
+# Environment file sourced by the systemd service unit
+restic_env_file: "/root/.restic/restic.env"

@@ -1,9 +1,0 @@
-#!/bin/bash
-export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-export RESTIC_PASSWORD="{{ restic_password }}"
-set -euo pipefail
-
-restic backup \
-  {% for p in restic_backup_paths %} {{ p }}{% endfor %} \
-  {% for ex in restic_excludes %} --exclude {{ ex }}{% endfor %} \
-  --tag ansible-backup-$(hostname)-$(date +%F)

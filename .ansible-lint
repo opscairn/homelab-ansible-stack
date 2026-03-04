@@ -1,0 +1,25 @@
+---
+# Ansible-lint configuration
+
+# Exclude molecule test files from role-prefix naming rules
+exclude_paths:
+  - roles/*/molecule/
+
+# Skip rules that produce false positives for this project:
+# - command-instead-of-module: intentional use of systemctl/git commands
+#   where the module equivalent is less readable or not applicable
+# - var-naming[no-role-prefix]: molecule test vars don't need role prefixes
+skip_list:
+  - command-instead-of-module
+  - var-naming[no-role-prefix]
+  - no-relative-paths
+
+# Remediation playbooks require extra-vars (target_host, container_name)
+# that aren't defined in defaults — pass them explicitly when running
+mock_modules: []
+mock_roles: []
+
+# Extra vars to satisfy syntax-check for remediation playbooks
+extra_vars:
+  target_host: localhost
+  container_name: test

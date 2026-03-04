@@ -1,9 +1,0 @@
-#!/bin/bash
-export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-export RESTIC_PASSWORD="{{ restic_password }}"
-set -euo pipefail
-
-restic forget --prune \
-  --keep-daily {{ restic_retention.keep_daily }} \
-  --keep-weekly {{ restic_retention.keep_weekly }} \
-  --keep-monthly {{ restic_retention.keep_monthly }}

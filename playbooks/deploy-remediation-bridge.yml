@@ -299,7 +299,7 @@
         content: |
           [Unit]
           Description=Homelab Automated Remediation Bridge
-          Documentation={{ gitea_ansible_repo_url }}
+          Documentation={{ project_repo_url }}
           After=network-online.target
           Wants=network-online.target
 

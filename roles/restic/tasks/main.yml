@@ -22,17 +22,19 @@
   ansible.builtin.stat:
     path: "{{ restic_repo_path }}"
   register: restic_repo_stat
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Unmount stale NFS mount if stat failed
   ansible.builtin.command: umount -l "{{ restic_repo_path }}"
   when: restic_repo_stat.failed
-  ignore_errors: true
+  changed_when: true
+  failed_when: false
 
 - name: Remount Restic NFS path
   ansible.builtin.command: mount "{{ restic_repo_path }}"
   when: restic_repo_stat.failed
-  ignore_errors: true
+  changed_when: true
+  failed_when: false
 # -------------------------------
 
 # --- Backup with safe service pausing ---
@@ -99,11 +101,12 @@
     --keep-weekly {{ restic_prune.keep_weekly }}
     --keep-monthly {{ restic_prune.keep_monthly }}
   register: restic_prune_result
+  changed_when: restic_prune_result.rc == 0
   failed_when: restic_prune_result.rc != 0 and
                'repository is already locked' not in restic_prune_result.stderr
   notify:
-    - remove stale restic lock
-    - retry restic prune after unlock
+    - Remove stale restic lock
+    - Retry restic prune after unlock
   when: restic_prune is defined
 
 - name: Check repository integrity
@@ -113,8 +116,9 @@
     --password-file "{{ restic_password_file }}"
     check
   register: restic_check_result
+  changed_when: false
   failed_when: restic_check_result.rc != 0 and
                'repository is already locked' not in restic_check_result.stderr
   notify:
-    - remove stale restic lock
-    - retry restic check after unlock
+    - Remove stale restic lock
+    - Retry restic check after unlock

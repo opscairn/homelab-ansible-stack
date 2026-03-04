@@ -18,19 +18,19 @@
     # --- Preflight ---
     - name: PREFLIGHT | Skip docker-host (already has nodepulse on port 9100)
       tags: [deploy]
-      meta: end_host
+      ansible.builtin.meta: end_host
       when: inventory_hostname == "docker-host"
 
     - name: PREFLIGHT | Check if node_exporter is already installed at correct version
       tags: [deploy]
-      command: "{{ node_exporter_bin }} --version"
+      ansible.builtin.command: "{{ node_exporter_bin }} --version"
       register: ne_version_check
       changed_when: false
       failed_when: false
 
     - name: PREFLIGHT | Set installed flag
       tags: [deploy]
-      set_fact:
+      ansible.builtin.set_fact:
         ne_already_installed: >-
           {{ ne_version_check.rc == 0 and
              node_exporter_version in ne_version_check.stderr }}
@@ -38,7 +38,7 @@
     # --- Install ---
     - name: INSTALL | Download node_exporter archive
       tags: [deploy]
-      get_url:
+      ansible.builtin.get_url:
         url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz"
         dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
         mode: "0644"
@@ -46,7 +46,7 @@
 
     - name: INSTALL | Extract node_exporter binary
       tags: [deploy]
-      unarchive:
+      ansible.builtin.unarchive:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
         dest: /tmp/
         remote_src: true
@@ -54,7 +54,7 @@
 
     - name: INSTALL | Copy binary to /usr/local/bin
       tags: [deploy]
-      copy:
+      ansible.builtin.copy:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter"
         dest: "{{ node_exporter_bin }}"
         mode: "0755"
@@ -66,7 +66,7 @@
 
     - name: INSTALL | Clean up downloaded files
       tags: [deploy]
-      file:
+      ansible.builtin.file:
         path: "{{ item }}"
         state: absent
       loop:
@@ -77,7 +77,7 @@
     # --- Systemd service ---
     - name: SERVICE | Create node_exporter systemd unit
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/systemd/system/node_exporter.service
         mode: "0644"
         owner: root
@@ -107,7 +107,7 @@
 
     - name: SERVICE | Enable and start node_exporter
       tags: [deploy, configure]
-      systemd:
+      ansible.builtin.systemd:
         name: node_exporter
         enabled: true
         state: started
@@ -117,7 +117,7 @@
     # --- Validate ---
     - name: VALIDATE | Wait for node_exporter to be reachable
       tags: [deploy, validate]
-      wait_for:
+      ansible.builtin.wait_for:
         host: "{{ ansible_host }}"
         port: "{{ node_exporter_port }}"
         timeout: 15
@@ -125,7 +125,7 @@
 
     - name: VALIDATE | Check metrics endpoint responds
       tags: [deploy, validate]
-      uri:
+      ansible.builtin.uri:
         url: "http://{{ ansible_host }}:{{ node_exporter_port }}/metrics"
         return_content: false
         status_code: 200
@@ -137,12 +137,12 @@
 
     - name: VALIDATE | Report status
       tags: [deploy, validate]
-      debug:
+      ansible.builtin.debug:
         msg: "node_exporter {{ node_exporter_version }} running on {{ inventory_hostname }} ({{ ansible_host }}:{{ node_exporter_port }}) — OK"
 
   handlers:
     - name: Restart node_exporter
-      systemd:
+      ansible.builtin.systemd:
         name: node_exporter
         state: restarted
         daemon_reload: true

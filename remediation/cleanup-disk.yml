@@ -70,7 +70,7 @@
         autoclean: true
         autoremove: true
       when: ansible_pkg_mgr == 'apt'
-      ignore_errors: true
+      failed_when: false
 
     # ---- Result ----
     - name: VALIDATE | Check disk usage after cleanup

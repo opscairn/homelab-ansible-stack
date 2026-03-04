@@ -2,28 +2,30 @@
 # Minimal main that deploys units, enables timer, then applies overrides + verify
 
 - name: Deploy restic service unit
-  template:
+  ansible.builtin.template:
     src: restic-backup.service.j2
     dest: /etc/systemd/system/restic-backup.service
     mode: "0644"
-  notify: [systemd daemon-reload]
+  notify: [Systemd daemon-reload]
 
 - name: Deploy restic timer unit
-  template:
+  ansible.builtin.template:
     src: restic-backup.timer.j2
     dest: /etc/systemd/system/restic-backup.timer
     mode: "0644"
-  notify: [systemd daemon-reload]
+  notify: [Systemd daemon-reload]
 
 - name: Ensure timer is enabled and started
-  systemd:
+  ansible.builtin.systemd:
     name: restic-backup.timer
     enabled: true
     state: started
 
-- import_tasks: 30-root-and-host-overrides.yml
+- name: Apply root and host overrides
+  ansible.builtin.import_tasks: 30-root-and-host-overrides.yml
 
 - name: Flush handlers before verify (ensure daemon-reload runs first)
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
-- import_tasks: 99-verify.yml
+- name: Run verification checks
+  ansible.builtin.import_tasks: 99-verify.yml

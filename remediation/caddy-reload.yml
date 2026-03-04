@@ -3,7 +3,7 @@
 # Caddy auto-renews certs but a reload can unstick a stalled renewal.
 
 - name: REMEDIATION | Reload Caddy on go-host
-  hosts: go-host
+  hosts: "{{ caddy_host | default('go-host') }}"
   become: true
 
   tasks:

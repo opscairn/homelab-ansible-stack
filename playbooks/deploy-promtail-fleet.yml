@@ -106,7 +106,7 @@
     - name: CONFIG | Deploy Promtail config
       tags: [deploy, configure]
       ansible.builtin.template:
-        src: ../templates/promtail-config.yml.j2
+        src: "{{ playbook_dir }}/../templates/promtail-config.yml.j2"
         dest: "{{ promtail_config_dir }}/config.yml"
         owner: root
         group: root

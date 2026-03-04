@@ -1,12 +1,13 @@
 ---
-# Deploy Restic backup fleet
+# Deploy Restic backup fleet (standalone playbook — does NOT use the restic or restic_backup roles)
 # Installs Restic, configures backup scripts + systemd timers on all backup_servers.
+# Uses restic_sftp_repo (SFTP transport) — contrast with the restic role which uses restic_repo_path (local/NFS).
 # Run: ansible-playbook playbooks/deploy-restic-fleet.yml --check --limit <one-host>
 # Run: ansible-playbook playbooks/deploy-restic-fleet.yml
 
 - name: Deploy Restic backup to fleet
   hosts: backup_servers
-  become: yes
+  become: true
   vars:
     restic_repository: "{{ restic_sftp_repo }}"
     restic_user: "{{ ansible_user }}"
@@ -15,14 +16,14 @@
   tasks:
     - name: INSTALL | Install restic
       tags: [deploy]
-      apt:
+      ansible.builtin.apt:
         name: restic
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: INSTALL | Create restic config directory
       tags: [deploy]
-      file:
+      ansible.builtin.file:
         path: "/home/{{ restic_user }}/.restic"
         state: directory
         owner: "{{ restic_user }}"
@@ -31,7 +32,7 @@
 
     - name: INSTALL | Create restic password file (raw text only)
       tags: [deploy]
-      copy:
+      ansible.builtin.copy:
         content: "{{ vault_restic_password }}"
         dest: "/home/{{ restic_user }}/.restic/restic.env"
         owner: "{{ restic_user }}"
@@ -40,14 +41,14 @@
 
     - name: CONFIG | Create exclude patterns directory
       tags: [deploy, configure]
-      file:
+      ansible.builtin.file:
         path: /etc/restic
         state: directory
         mode: '0755'
 
     - name: CONFIG | Deploy exclude patterns
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/restic/exclude.txt
         mode: '0644'
         content: |
@@ -74,7 +75,7 @@
 
     - name: CONFIG | Deploy backup script (with exit code 3 tolerance)
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /usr/local/bin/restic-backup.sh
         mode: '0755'
         content: |
@@ -142,8 +143,9 @@
 
     - name: INSTALL | Initialize restic repository (if needed)
       tags: [deploy]
+      become: true
       become_user: "{{ restic_user }}"
-      shell: |
+      ansible.builtin.shell: |
         restic -r {{ restic_repository }} \
           --password-file /home/{{ restic_user }}/.restic/restic.env \
           snapshots 2>&1 || \
@@ -157,7 +159,7 @@
 
     - name: SYSTEMD | Create systemd service
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/systemd/system/restic-backup.service
         mode: '0644'
         content: |
@@ -175,14 +177,14 @@
 
     - name: SYSTEMD | Create systemd drop-in directory
       tags: [deploy, configure]
-      file:
+      ansible.builtin.file:
         path: /etc/systemd/system/restic-backup.service.d
         state: directory
         mode: '0755'
 
     - name: SYSTEMD | Create user-alignment drop-in
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/systemd/system/restic-backup.service.d/user-alignment.conf
         mode: '0644'
         content: |
@@ -193,7 +195,7 @@
 
     - name: SYSTEMD | Create log-to-journal drop-in
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/systemd/system/restic-backup.service.d/log-to-file.conf
         mode: '0644'
         content: |
@@ -203,7 +205,7 @@
 
     - name: SYSTEMD | Create backup timer
       tags: [deploy, configure]
-      copy:
+      ansible.builtin.copy:
         dest: /etc/systemd/system/restic-backup.timer
         mode: '0644'
         content: |
@@ -220,7 +222,7 @@
 
     - name: SYSTEMD | Create log file with correct permissions
       tags: [deploy, configure]
-      file:
+      ansible.builtin.file:
         path: /var/log/restic-backup.log
         state: touch
         owner: "{{ restic_user }}"
@@ -231,36 +233,37 @@
 
     - name: SYSTEMD | Reload systemd
       tags: [deploy, configure]
-      systemd:
-        daemon_reload: yes
+      ansible.builtin.systemd:
+        daemon_reload: true
 
     - name: SYSTEMD | Enable and start timer
       tags: [deploy, configure]
-      systemd:
+      ansible.builtin.systemd:
         name: restic-backup.timer
-        enabled: yes
+        enabled: true
         state: started
       when: not ansible_check_mode
 
     - name: VALIDATE | Run initial backup test
       tags: [deploy, validate]
-      shell: /usr/local/bin/restic-backup.sh
+      ansible.builtin.command: /usr/local/bin/restic-backup.sh
       register: initial_backup
+      changed_when: false
       failed_when: initial_backup.rc not in [0]
       when: not ansible_check_mode
 
     - name: VALIDATE | Report status
       tags: [deploy, validate]
-      debug:
+      ansible.builtin.debug:
         msg: "{{ inventory_hostname }}: Initial backup completed — check /var/log/restic-backup.log"
 
 - name: Verify all deployments
   hosts: backup_servers
-  become: yes
+  become: true
   tasks:
     - name: VALIDATE | Check service status
       tags: [deploy, validate]
-      shell: systemctl status restic-backup.service | head -10
+      ansible.builtin.shell: set -o pipefail && systemctl status restic-backup.service | head -10
       register: service_status
       failed_when: false
       changed_when: false
@@ -268,7 +271,7 @@
 
     - name: VALIDATE | Check timer status
       tags: [deploy, validate]
-      shell: systemctl status restic-backup.timer
+      ansible.builtin.command: systemctl status restic-backup.timer
       register: timer_status
       failed_when: not ansible_check_mode and 'active (waiting)' not in timer_status.stdout
       changed_when: false
@@ -276,17 +279,19 @@
 
     - name: VALIDATE | Verify snapshots exist
       tags: [deploy, validate]
+      become: true
       become_user: "{{ ansible_user }}"
-      shell: |
-        restic -r {{ restic_sftp_repo }} \
-          --password-file /home/{{ ansible_user }}/.restic/restic.env \
+      ansible.builtin.command: >
+        restic -r {{ restic_sftp_repo }}
+          --password-file /home/{{ ansible_user }}/.restic/restic.env
           snapshots --host {{ inventory_hostname }} --latest 1
       register: snapshot_check
+      changed_when: false
       when: not ansible_check_mode
 
     - name: VALIDATE | Display verification results
       tags: [deploy, validate]
-      debug:
+      ansible.builtin.debug:
         msg:
           - "Host: {{ inventory_hostname }}"
           - "Timer: {{ 'ACTIVE' if 'active (waiting)' in timer_status.stdout else 'FAILED' }}"
