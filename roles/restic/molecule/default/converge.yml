@@ -1,26 +1,6 @@
 ---
-# Molecule converge: applies the restic role against the test container.
-
 - name: Converge
   hosts: all
   become: true
-  tasks:
-    - name: Install bzip2 (needed to extract restic)
-      ansible.builtin.apt:
-        name: bzip2
-        state: present
-        update_cache: true
-
-    - name: Download restic binary
-      ansible.builtin.get_url:
-        url: https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2
-        dest: /tmp/restic.bz2
-        mode: "0644"
-
-    - name: Extract restic binary
-      ansible.builtin.shell: bunzip2 -f /tmp/restic.bz2 && chmod 755 /tmp/restic && mv /tmp/restic /usr/local/bin/restic
-      args:
-        creates: /usr/local/bin/restic
-
   roles:
     - role: restic

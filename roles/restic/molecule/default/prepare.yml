@@ -1,0 +1,28 @@
+---
+- name: Prepare — install restic binary
+  hosts: all
+  become: true
+  tasks:
+    - name: Install bzip2
+      ansible.builtin.apt:
+        name: bzip2
+        state: present
+        update_cache: true
+
+    - name: Download restic binary
+      ansible.builtin.get_url:
+        url: https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2
+        dest: /tmp/restic.bz2
+        mode: "0644"
+
+    - name: Extract and install restic to /usr/bin
+      ansible.builtin.shell: |
+        bunzip2 -fk /tmp/restic.bz2
+        cp /tmp/restic /usr/bin/restic
+        chmod 755 /usr/bin/restic
+      args:
+        creates: /usr/bin/restic
+
+    - name: Verify restic is available
+      ansible.builtin.command: restic version
+      changed_when: false

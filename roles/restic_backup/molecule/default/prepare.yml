@@ -1,0 +1,50 @@
+---
+- name: Prepare — install restic binary and initialize repo
+  hosts: all
+  become: true
+  tasks:
+    - name: Install bzip2
+      ansible.builtin.apt:
+        name: bzip2
+        state: present
+        update_cache: true
+
+    - name: Download restic binary
+      ansible.builtin.get_url:
+        url: https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_amd64.bz2
+        dest: /tmp/restic.bz2
+        mode: "0644"
+
+    - name: Extract and install restic to /usr/bin
+      ansible.builtin.shell: |
+        bunzip2 -fk /tmp/restic.bz2
+        cp /tmp/restic /usr/bin/restic
+        chmod 755 /usr/bin/restic
+      args:
+        creates: /usr/bin/restic
+
+    - name: Verify restic is available
+      ansible.builtin.command: restic version
+      changed_when: false
+
+    - name: Create restic env file
+      ansible.builtin.copy:
+        dest: "{{ restic_env_file }}"
+        content: |
+          RESTIC_REPOSITORY={{ restic_repo_path }}
+          RESTIC_PASSWORD={{ restic_password }}
+        mode: "0600"
+
+    - name: Create restic password file
+      ansible.builtin.copy:
+        dest: "{{ restic_password_file }}"
+        content: "{{ restic_password }}"
+        mode: "0600"
+
+    - name: Initialize restic repository
+      ansible.builtin.command: >
+        restic init
+        --repo {{ restic_repo_path }}
+        --password-file {{ restic_password_file }}
+      args:
+        creates: "{{ restic_repo_path }}/config"
