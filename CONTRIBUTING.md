@@ -3,7 +3,7 @@
 ## Development Setup
 
 ```bash
-git clone https://github.com/opskern/homelab-ansible-stack && cd homelab-ansible-stack
+git clone https://github.com/opskern/ops-kernel-stack && cd ops-kernel-stack
 cp ansible.cfg.example ansible.cfg
 cp inventory.yml.example inventory.yml   # use test hosts
 cp group_vars/all/vault.yml.example group_vars/all/vault.yml
