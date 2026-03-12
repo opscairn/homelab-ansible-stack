@@ -8,7 +8,7 @@ hardening_ops_user_groups: ["sudo"]
 hardening_ops_ssh_pubkeys: []
 # Example:
 #   - "ssh-ed25519 AAAA... admin@company"
-#   - "ssh-ed25519 AAAA... ops@opscairn"
+#   - "ssh-ed25519 AAAA... ops@opskern"
 hardening_disable_root_login: true
 
 # ── SSH ──────────────────────────────────────────────────────────────────────

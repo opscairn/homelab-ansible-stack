@@ -23,7 +23,7 @@ Standardized server hardening for Ubuntu 24.04. Designed for Hetzner Cloud + Tai
     - role: server_hardening
       vars:
         hardening_ops_ssh_pubkeys:
-          - "ssh-ed25519 AAAA... ops@opscairn"
+          - "ssh-ed25519 AAAA... ops@opskern"
 ```
 
 ## Docker Hosts

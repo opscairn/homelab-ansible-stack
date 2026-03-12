@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: server_hardening
-  author: opscairn
+  author: opskern
   description: >
     Standardized server hardening for Ubuntu 24.04. Covers SSH, UFW, fail2ban,
     unattended-upgrades, sysctl kernel hardening, NTP, systemd defaults,
