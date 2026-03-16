@@ -2,7 +2,7 @@
 # Remediation: attempt to recover an unresponsive VM/LXC via Proxmox
 # Called by remediation-bridge with -e "target_host=<host>"
 
-- name: REMEDIATION | Recover {{ target_host | default('undefined') }} via Proxmox
+- name: "REMEDIATION | Recover via Proxmox — {{ target_host | default('undefined') }}"
   hosts: localhost
   connection: local
   gather_facts: false

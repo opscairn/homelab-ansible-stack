@@ -75,7 +75,7 @@
       ansible.builtin.set_fact:
         audit_data: "{{ audit_script.stdout | from_json }}"
 
-    - name: Create audit output directory
+    - name: Create audit output directory  # noqa: run-once[task]
       ansible.builtin.file:
         path: "{{ patch_audit_dir }}"
         state: directory
@@ -131,6 +131,7 @@
         - host_info | length > 0
         - host_info.type == 'qm'
       register: qm_snap
+      changed_when: qm_snap.rc == 0
 
     - name: Take LXC snapshot (pct)
       ansible.builtin.command:
@@ -141,6 +142,7 @@
         - host_info | length > 0
         - host_info.type == 'pct'
       register: pct_snap
+      changed_when: pct_snap.rc == 0
 
     - name: Verify snapshot exists
       ansible.builtin.command:
@@ -240,7 +242,8 @@
   tasks:
     - name: Check disk usage
       ansible.builtin.shell:
-        cmd: "df -h / | awk 'NR==2 {print $5}' | tr -d '%'"
+        cmd: "set -o pipefail; df -h / | awk 'NR==2 {print $5}' | tr -d '%'"
+        executable: /bin/bash
       register: disk_pct
       changed_when: false
 
@@ -304,7 +307,7 @@
       ansible.builtin.set_fact:
         smoke_all_passed: "{{ (svc_checks | rejectattr('passed') | list | length == 0) and (failed_units.stdout_lines | default([]) | length == 0) and (disk_pct.stdout | int <= 90) }}"
 
-    - name: Create smoke results directory
+    - name: Create smoke results directory  # noqa: run-once[task]
       ansible.builtin.file:
         path: "{{ smoke_results_dir }}"
         state: directory
@@ -314,8 +317,16 @@
       run_once: true
 
     - name: Write smoke results
+      vars:
+        smoke_report:
+          host: "{{ inventory_hostname }}"
+          date: "{{ smoke_date }}"
+          disk_pct: "{{ disk_pct.stdout | int }}"
+          failed_units: "{{ failed_units.stdout_lines | default([]) }}"
+          service_checks: "{{ svc_checks }}"
+          all_passed: "{{ smoke_all_passed }}"
       ansible.builtin.copy:
-        content: "{{ {'host': inventory_hostname, 'date': smoke_date, 'disk_pct': disk_pct.stdout | int, 'failed_units': failed_units.stdout_lines | default([]), 'service_checks': svc_checks, 'all_passed': smoke_all_passed} | to_nice_json }}"
+        content: "{{ smoke_report | to_nice_json }}"
         dest: "{{ smoke_results_dir }}/{{ inventory_hostname }}-{{ smoke_date }}.json"
         mode: "0644"
       delegate_to: localhost
@@ -373,6 +384,7 @@
         cmd: "{{ host_info.type }} stop {{ host_info.vmid }}"
       delegate_to: "{{ host_info.pve_host }}"
       become: true
+      changed_when: true
 
     - name: Wait for guest to stop
       ansible.builtin.pause:
@@ -383,12 +395,14 @@
         cmd: "{{ host_info.type }} rollback {{ host_info.vmid }} {{ snapshot_name }}"
       delegate_to: "{{ host_info.pve_host }}"
       become: true
+      changed_when: true
 
     - name: Start guest
       ansible.builtin.command:
         cmd: "{{ host_info.type }} start {{ host_info.vmid }}"
       delegate_to: "{{ host_info.pve_host }}"
       become: true
+      changed_when: true
 
     - name: Wait for SSH to come back
       ansible.builtin.wait_for_connection:
