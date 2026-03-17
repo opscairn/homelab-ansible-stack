@@ -17,7 +17,7 @@
     mode: "0700"
 
 - name: USERS | Deploy SSH authorized keys
-  ansible.builtin.authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ hardening_ops_user }}"
     key: "{{ item }}"
     state: present
