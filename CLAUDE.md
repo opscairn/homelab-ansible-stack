@@ -1,5 +1,7 @@
 # Ansible Public Collection
 
+> **Global context:** `~/.claude/CLAUDE.md` (ARIA model, workflow, hooks).
+
 Public Ansible collection for homelab infrastructure automation.
 
 ## File Structure
